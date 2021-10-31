@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <data>
+    <record id="view_MarketExchange_form" model="ir.ui.view">
+      <field name="name">MarketExchange.form</field>
+      <field name="model">market.exchange</field>
+      <field name="arch" type="xml">
+        <form>
+          <header>
+            <field name="state" widget="statusbar"/>
+          </header>
+          <sheet>
+
+            <div class="oe_button_box" name="button_box">
+              <button name="button_update" type="object" string="update" class="oe_stat_button" icon="fa-refresh"/>
+            </div>
+                        <h1>
+              <field name="name" nolabel="1"/>
+            </h1>
+            <notebook>
+
+              <page string="Configuration">
+                <group>
+
+                  <field name="description"/>
+
+                </group>
+
+
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+    <record id="view_MarketExchange_list" model="ir.ui.view">
+      <field name="name">MarketExchange.list</field>
+      <field name="model">market.exchange</field>
+      <field name="arch" type="xml">
+        <tree string="MarketExchange">
+          <field name="name"/>
+          <field name="state"/>
+        </tree>
+      </field>
+    </record>
+    <record id="action_MarketExchange_form" model="ir.actions.act_window">
+      <field name="name">Exchange</field>
+      <field name="res_model">market.exchange</field>
+      <field name="view_mode">tree,form</field>
+      <field name="view_id" ref="view_MarketExchange_list"/>
+    </record>
+    <menuitem id="menu_market_exchange" name="Market" parent="menu_market_root" sequence="10"/>
+    <menuitem action="action_MarketExchange_form" id="menu_action_MarketExchange_form" parent="menu_market_exchange" sequence="10"/>
+  </data>
+</odoo>
