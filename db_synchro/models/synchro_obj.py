@@ -217,18 +217,18 @@ class BaseSynchroObj(models.Model):
         "check the child of this object"
         for obj in self:
             object_list = []
-            childs_ids = self.env['synchro.obj']
+            child_ids = self.env['synchro.obj']
             for rec_field in obj.field_ids:
                 if rec_field.field_id.ttype in ['many2one', 'many2many']:
                     obj_name = rec_field.field_id.relation
                     condition = [('model_id.model', '=', obj_name),
                                  ('server_id', '=', obj.server_id.id)]
                     obj_ids = self.search(condition)
-                    childs_ids |= obj_ids
+                    child_ids |= obj_ids
                     if not obj_ids:
                         object_list.append(obj_name)
-            childs_ids |= obj.server_id.create_obj(object_list)
-            obj.write({'child_ids': [(6, 1, childs_ids.ids)]})
+            child_ids |= obj.server_id.create_obj(object_list)
+            obj.write({'child_ids': [(6, 1, child_ids.ids)]})
 
     def remote_read(self, remote_ids, remote_fields=[]):
         "read the value of the remote object filter on remote_ids"

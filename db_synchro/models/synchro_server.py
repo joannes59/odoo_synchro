@@ -60,6 +60,7 @@ class BaseSynchroServer(models.Model):
          ('12', 'Version 12.0'),
          ('13', 'Version 13.0'),
          ('14', 'Version 14.0'),
+         ('15', 'Version 15.0'),
          ],
         string='Version',
         default='14',
@@ -98,7 +99,8 @@ class BaseSynchroServer(models.Model):
         for server in self:
             for base_object in object_list:
                 if not server.obj_ids.search([
-                                    ('model_id.model', '=', base_object)]):
+                                    ('model_id.model', '=', base_object),
+                                    ('server_id', '=', server.id)]):
 
                     model_condition = [('model', '=', base_object)]
                     model_ids = self.env['ir.model'].search(model_condition)
