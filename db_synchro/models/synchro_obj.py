@@ -181,20 +181,21 @@ class BaseSynchroObj(models.Model):
                     local_field.check_remote = True
                     local_field.remote_type = remote_fields[local_field.name]['type']
                     if local_field.remote_type not in ['one2many']:
-                        if local_field.name not in except_fields:
+                        if local_field.name not in except_fields and local_field.field_id.store:
                             local_field.synchronize = True
 
     def unlink_mapping(self):
         for obj in self:
             obj.line_id.unlink()
 
-    def load_remote_record(self, limit=10):
+    def load_remote_record(self, limit=10, domain=[]):
         "Load remote record"
         limit = self.env.context.get('limit', 0) or limit
+        synchronize_date = fields.Datetime.now()
 
         for obj in self:
             already_ids = obj.get_synchronazed_remote_ids()
-            domain = [('id', 'not in', already_ids)]
+            domain = [('id', 'not in', already_ids)] + domain
 
             remote_domain = eval(obj.domain)
             if remote_domain:
@@ -205,13 +206,16 @@ class BaseSynchroObj(models.Model):
                 pass
             elif limit and len(obj_ids) > limit:
                 obj_ids = obj_ids[:limit]
+                synchronize_date = False
 
             for obj_id in obj_ids:
                 obj_vals = obj.remote_read([obj_id])
                 _logger.info("\write_local_value;%s;%s\n%s" % (obj.model_id.model, obj_id, obj_vals))
                 obj.write_local_value(obj_vals)
 
-            obj.synchronize_date = fields.Datetime.now()
+            if synchronize_date:
+                obj.synchronize_date = synchronize_date
+            return obj_ids
 
     def check_childs(self):
         "check the child of this object"
@@ -301,8 +305,11 @@ class BaseSynchroObj(models.Model):
                 description = '%s ' % (search_value) + description
                 condition.append((search_field, '=', search_value))
 
+
+
             local_ids = self.env[self.model_id.model].search(condition)
             local_id = local_ids and (len(local_ids) == 1) and local_ids[0].id or False
+
 
             line_condition = [
                     ('obj_id', '=', self.id),
@@ -378,7 +385,7 @@ class BaseSynchroObj(models.Model):
                 if remote_vals:
                     remote_value = self.exception_value_create(remote_vals[0])
                     local_vals = self.get_local_value(remote_value)
-                    new_obj = self.env[self.model_id.model].with_context(synchro=True).create(local_vals)
+                    new_obj = self.env[self.model_id.model].with_context(check_move_validity=False,synchro=True).create(local_vals)
                     # Update line
                     local_ids = self.env['synchro.obj.line'].search(condition)
                     if local_ids:
@@ -451,10 +458,15 @@ class BaseSynchroObj(models.Model):
         local_value = {}
 
         for sync_field in self.field_ids:
+
+            if sync_field.field_id.relation:
+                many2_obj = self.server_id.get_obj(sync_field.field_id.relation)
+                if many2_obj.state == 'cancel':
+                    continue
+
             if sync_field.field_id.ttype in ['many2one']:
                 if remote_value.get(sync_field.name):
                     many2_remote_id = remote_value.get(sync_field.name)[0]
-                    many2_obj = self.server_id.get_obj(sync_field.field_id.relation)
                     many2_local_id = many2_obj.get_local_id(many2_remote_id)
                     if many2_local_id:
                         field_name = sync_field.field_id.name
@@ -463,7 +475,6 @@ class BaseSynchroObj(models.Model):
             elif sync_field.field_id.ttype in ['many2many']:
                 many2_remote_ids = remote_value.get(sync_field.name)
                 if many2_remote_ids:
-                    many2_obj = self.server_id.get_obj(sync_field.field_id.relation)
                     many2_local_ids = []
                     for many2_remote_id in many2_remote_ids:
                         many2_local_id = many2_obj.get_local_id(many2_remote_id)
@@ -557,24 +568,25 @@ class BaseSynchroObj(models.Model):
             remote_id = remote_value.get('id')
             local_id = self.get_local_id(remote_id, no_create=True)
 
-            if local_id and self.auto_update:
-                # Write
-                remote_value = self.exception_value_write(remote_value)
-                local_value = self.get_local_value(remote_value)
-                browse_obj = self.env[self.model_id.model].browse(local_id)
-                browse_obj.sudo().with_context(synchro=True).write(local_value)
+            if local_id:
+                if self.auto_update:
+                    # Write
+                    remote_value = self.exception_value_write(remote_value)
+                    local_value = self.get_local_value(remote_value)
+                    browse_obj = self.env[self.model_id.model].browse(local_id)
+                    browse_obj.sudo().with_context(check_move_validity=False,synchro=True).write(local_value)
             elif self.auto_create:
                 # Create
                 remote_value = self.exception_value_create(remote_value)
                 local_value = self.get_local_value(remote_value)
-                new_obj = self.env[self.model_id.model].sudo().with_context(synchro=True).create(local_value)
+                new_obj = self.env[self.model_id.model].sudo().with_context(check_move_validity=False,synchro=True).create(local_value)
                 local_id = new_obj.id
                 condition = [('remote_id', '=', remote_id), ('obj_id', '=', self.id)]
                 local_ids = self.env['synchro.obj.line'].search(condition)
                 if local_ids:
-                    local_ids.with_context(synchro=True).write({'local_id': local_id})
+                    local_ids.with_context(check_move_validity=False,synchro=True).write({'local_id': local_id})
                 else:
-                    local_ids.with_context(synchro=True).create({
+                    local_ids.with_context(check_move_validity=False,synchro=True).create({
                                     'local_id': local_id,
                                     'remote_id': remote_id,
                                     'obj_id': self.id,
