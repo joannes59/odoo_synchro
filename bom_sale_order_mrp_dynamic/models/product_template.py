@@ -53,13 +53,8 @@ class ProductTemplate(models.Model):
                         continue
 
                     res[obj.id].update({attribute: value})
-
                     if hasattr(obj, attribute):
-                        try:
-                            setattr(obj, attribute, value)
-                        except:
-                            _logger.warning("This value cannot be loading %s.id = %s value : %s; %s"
-                                             % (obj.id, obj._name, attribute, value))
+                        setattr(obj, attribute, value)
         return res
 
     def update_variant_compute(self, data={}):

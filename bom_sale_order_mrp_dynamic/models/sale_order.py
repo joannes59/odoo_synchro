@@ -47,8 +47,11 @@ class SaleOrderLine(models.Model):
                 line.production_id._onchange_workorder_ids()
 
 
-
-
+    def _prepare_procurement_values_test(self, group_id=False):
+        values = super()._prepare_procurement_values(group_id=group_id)
+        if self.bom_id:
+            values.update({'bom_id': self.bom_id.id})
+        return values
 
     def update_bom_id(self):
         """Update bom"""

@@ -9,8 +9,7 @@ class ProductAttribute(models.Model):
 
     convert_type = fields.Selection([('float', 'Numeric'), ('text', 'Text')],
                                     string='Value Type', default='text')
-
-    #auto_add = fields.boolean('Auto Add custom value')
+    python_name = fields.Char('Python name', help="Use this name in python code")
 
     create_variant = fields.Selection([
         ('always', 'Instantly'),

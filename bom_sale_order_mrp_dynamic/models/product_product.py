@@ -15,34 +15,6 @@ class ProductProduct(models.Model):
     compute_input = fields.Char('Compute input')
     compute_output = fields.Char('Compute output')
 
-    def compute_python_old(self, data={}):
-        """ Compute the python code on template to complete the product value"""
-        for product in self:
-            res = {}
-            if product.python_compute:
-                localdict = data.copy()
-                localdict.update({'product': product})
-                if product.bom_id:
-                    localdict.update(product.bom_id.get_attribute_value())
-
-                # Check ambiguity
-                for attribute, value in localdict.items():
-                    if hasattr(product, attribute):
-                        raise ValidationError(
-                            "The parameters name %s is reserved on product" % attribute)
-
-                # Execute safe code, return localdict with result
-                safe_eval(product.python_compute, localdict, mode="exec", nocopy=True)
-
-                for attribute, value in localdict.items():
-                    if len(attribute) and attribute[0] == "_":
-                        continue
-                    if hasattr(product, attribute):
-                        try:
-                            setattr(product, attribute, value)
-                        except:
-                            _logger.warning("This value cannot be loading product.id = %s value : %s; %s" % (product.id, attribute, value))
-
     def compute_python_code(self, data={}):
         """ Compute the python code on template to complete the product value"""
         return self.env['product.template'].compute_python_code(self)

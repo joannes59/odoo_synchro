@@ -54,7 +54,7 @@ class MrpBomParameter(models.Model):
 
     bom_id = fields.Many2one('mrp.bom', 'Bill of materials')
     attribute_id = fields.Many2one('product.attribute', 'Attribute')
-    name = fields.Char('name')
+    name = fields.Char('name', related='attribute_id.python_name')
     value = fields.Char('Value')
 
     @api.onchange('value')
@@ -74,8 +74,6 @@ class MrpBom(models.Model):
     def compute_line(self, data={}):
         """Compute the line"""
         for bom in self:
-            bom.get_attribute_value()
-            bom.update_custom_value()
             for line in bom.bom_line_ids:
                 line.compute_line(data=data)
             for line in bom.operation_ids:
@@ -133,11 +131,12 @@ class MrpBom(models.Model):
                     parameters_vals = {
                         'bom_id': bom.id,
                         'attribute_id': attribute_id,
-                        'name': txt_cleanup(line.attribute_id.name),
                     }
                     if bom.product_id:
                         parameters_vals['value'] = line.name
                     parameter = self.env['mrp.bom.parameter'].create(parameters_vals)
+                    if not parameter.name:
+                        parameter.name = txt_cleanup(line.attribute_id.name)
                 else:
                     parameter = parameter_ids[0]
                     if bom.product_id:
