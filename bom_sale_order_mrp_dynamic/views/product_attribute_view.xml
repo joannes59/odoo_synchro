@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="view_product_attribute_custom_dynamic">
+        <field name="name">product.attribute</field>
+        <field name="model">product.attribute</field>
+        <field name="inherit_id" ref="product.product_attribute_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_custom']" position="before">
+                <field name="code" optional="hide"/>
+            </xpath>
+            <page name="related_products" position="after">
+                <page string="Parameters" name="parameters">
+                <group>
+                    <field name="convert_type" />
+                    <field name="code" />
+                </group>
+                </page>
+            </page>
+        </field>
+    </record>
+</odoo>
