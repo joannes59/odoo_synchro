@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record model="ir.ui.view" id="view_bom_line_ids_add_custom">
-        <field name="name">view.sale.bom.line.bom.cost</field>
+    <record model="ir.ui.view" id="view_bom_attribute_add_custom_form">
+        <field name="name">view.bom.attribute.form</field>
         <field name="model">mrp.bom</field>
         <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="/form/sheet/notebook/page/field[@name='bom_line_ids']/tree/field[@name='product_uom_id']" position="after">
+                <button name="compute_line" string="update" type="object" icon="fa-reload" attrs="{'invisible': [('python_compute', '=', '')]}"/>
                 <field name="python_compute" optional="hide"/>
             </xpath>
+            <notebook position="before">
+                <group>
+                     <field name="default_code"/>
+                </group>
+                <field name="product_template_attribute_value_ids" widget="many2many_tags" readonly="1" groups="product.group_product_variant"/>
+            </notebook>
             <page name="miscellaneous" position="before">
                     <page string="Parameters">
                         <group>
@@ -16,16 +23,21 @@
                         </group>
                             <button name="create_attribute_value" string="update" type="object"/>
                     <group>
-                        <field name="parameter_ids">
-                            <tree editable="bottom">
-                                <field name="attribute_id"/>
-                                <field name="name"/>
-                                <field name="value"/>
-                            </tree>
-                        </field>
+                        <field name="json_attribute"/>
+                        <field name="json_custom_attribute"/>
                     </group>
                     </page>
                 </page>
+        </field>
+    </record>
+        <record model="ir.ui.view" id="view_bom_attribute_add_custom_tree">
+        <field name="name">view.bom.attribute.tree</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="product_tmpl_id" position="after">
+                <field name="product_template_attribute_value_ids" widget="many2many_tags" readonly="1" groups="product.group_product_variant"/>
+            </field>
         </field>
     </record>
 </odoo>

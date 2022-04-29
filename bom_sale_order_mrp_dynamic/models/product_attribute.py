@@ -1,10 +1,51 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo import _, api, fields, models
+from odoo.tools.float_utils import float_split_str
 from odoo.exceptions import UserError
-
+import unicodedata
 import logging
 _logger = logging.getLogger(__name__)
+
+
+def remove_accents(input_str):
+    only_ascii = unicodedata.normalize('NFD', input_str).encode('ascii', 'ignore')
+    if type(only_ascii) == bytes:
+        return only_ascii.decode()
+    else:
+        return only_ascii
+
+
+def txt_cleanup(text):
+    """Return a compatible text with python variable notation"""
+    if text:
+        text = remove_accents(text)
+        text = text.strip()
+        for char in '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n':
+            text = text.replace(char, ' ')
+        for char in [('    ', ' '), ('   ', ' '), ('  ', ' '), (' ', '_')]:
+            text = text.replace(char[0], char[1])
+        return text.lower()
+    else:
+        return ''
+
+
+def convert_to_float(text):
+    "convert dirty text to float or 0.0"
+    out_str = ""
+    if text:
+        for char in text:
+            if char.isnumeric() or char in [',', '.', '-']:
+                out_str += char
+        # TODO: Use Country decimal notation function
+        out_str = out_str.replace(',', '.')
+        try:
+            res = float(out_str or 0.0)
+        except:
+            res = 0.0
+    else:
+        res = 0.0
+    return res
 
 
 class ProductAttribute(models.Model):
@@ -13,6 +54,10 @@ class ProductAttribute(models.Model):
     convert_type = fields.Selection([('float', 'Numeric'), ('text', 'Text')],
                                     string='Value Type', default='text')
     code = fields.Char('code', help="Code of this attribute value")
+    auto_create = fields.Boolean("Auto create custom value",
+                                 help="When custom value is completed, a new value is adding to this attribute")
+    rounding = fields.Integer("rounding", default=1)
+
 
     create_variant = fields.Selection([
         ('always', 'Instantly'),
@@ -32,6 +77,7 @@ class ProductAttribute(models.Model):
         res = self.env['product.attribute.value']
         if not code:
             return res
+
         value_ids = self.value_ids.search([('code', '=', code), ('attribute_id', '=', self.id)])
         if not value_ids:
             value_ids = self.value_ids.search(
@@ -47,11 +93,59 @@ class ProductAttribute(models.Model):
             res = value_ids[0]
         return res
 
+    def update_value(self):
+        """ Update the value by use code or name"""
+        for attribute in self:
+            for line in attribute.value_ids:
+                line.get_value()
+
+    def get_value(self, value):
+        """ return converted value"""
+        if self.convert_type == 'float':
+            numeric = convert_to_float(value)
+            return numeric
+        if self.convert_type == 'text':
+            text = txt_cleanup(value)
+            return text
+        else:
+            return False
+
 
 class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
 
     code = fields.Char('code', help="Code of this attribute value")
+    numeric = fields.Float('Numeric value')
+
+    def update_value(self):
+        """ Update the value by use code or name"""
+        for attribute_value in self:
+            attribute_value.get_value()
+
+    def get_value(self):
+        """ return value"""
+        self.ensure_one()
+        if self.attribute_id.convert_type == 'float':
+            if self.numeric:
+                pass
+            elif self.code:
+                self.numeric = convert_to_float(self.code)
+            else:
+                self.numeric = convert_to_float(self.name)
+                # TODO: add decimal precision to code
+                self.code = str(int(self.numeric))
+
+            return self.numeric or 0.0
+
+        elif self.attribute_id.convert_type == 'text':
+            if self.code:
+                pass
+            else:
+                self.code = txt_cleanup(self.name)
+            return self.code or '?'
+
+        else:
+            return False
 
     def name_get(self):
         """ Return the code with the name"""

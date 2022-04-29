@@ -12,7 +12,7 @@
                 <field name="python_compute" optional="hide"/>
                 <field name="parent_product_tmpl_id" invisible="1"/>
                 <field name="possible_bom_product_template_attribute_value_ids" invisible="1"/>
-                <field name="bom_product_template_attribute_value_ids" optional="hide" widget="many2many_tags" options="{'no_create': True}" attrs="{'column_invisible': [('parent.product_id', '!=', False)]}" groups="product.group_product_variant"/>
+                <field name="bom_product_template_attribute_value_ids" optional="hide" widget="many2many_tags" options="{'no_create': True}" groups="product.group_product_variant"/>
             </field>
         </field>
     </record>
@@ -27,7 +27,7 @@
                     <field name="group_id" optional="hide"/>
                     <field name="parent_product_tmpl_id" invisible="1"/>
                     <field name="possible_bom_product_template_attribute_value_ids" invisible="1"/>
-                    <field name="bom_product_template_attribute_value_ids" optional="hide" widget="many2many_tags" options="{'no_create': True}" attrs="{'column_invisible': [('parent.product_id', '!=', False)]}" groups="product.group_product_variant"/>
+                    <field name="bom_product_template_attribute_value_ids" optional="hide" widget="many2many_tags" options="{'no_create': True}" groups="product.group_product_variant"/>
                 </group>
             </notebook>
             <notebook position="inside">

@@ -41,32 +41,56 @@ class SaleOrderLine(models.Model):
                     'origin': line.order_id.name,
                     'product_qty': line.product_uom_qty,
                     'product_uom_id': line.product_uom.id,
+                    'sale_line_id': line.id,
+
                 }
                 line.production_id = self.env['mrp.production'].create(wo_vals)
                 line.production_id._onchange_move_raw()
                 line.production_id._onchange_workorder_ids()
+                line.production_id.button_plan()
+
+    def _update_bom_id(self):
+        """ update bom_id"""
+        if self.product_id.bom_id:
+            self.bom_id = self.product_id.bom_id
+        elif self.product_template_id.bom_id:
+            self.product_id.create_bom()
+            self.bom_id = self.product_id.bom_id
+        else:
+            self.bom_id = False
+
+    def update_bom_id(self):
+        """Update bom"""
+        for line in self:
+            line._update_bom_id()
+
+            if line.product_custom_attribute_value_ids and line.bom_id:
+                if line.bom_id.sale_line_id != line:
+                    new_bom = self.bom_id.copy({'sale_line_id': line.id, 'code': line.order_id.name})
+                    line.bom_id = new_bom
+                    line.bom_id.compute_line()
 
 
-    def _prepare_procurement_values_test(self, group_id=False):
+    @api.onchange('product_id')
+    def product_id_change(self):
+        """ update bom_id"""
+        res = super().product_id_change()
+        if self.product_id.bom_id:
+            self.product_id.bom_id.update_custom_value(self.product_custom_attribute_value_ids)
+            self.product_id.bom_id.compute_line()
+            self.update({'bom_id': self.product_id.bom_id.id})
+        return res
+
+
+    def _prepare_procurement_values(self, group_id=False):
         values = super()._prepare_procurement_values(group_id=group_id)
         if self.bom_id:
             values.update({'bom_id': self.bom_id.id})
         return values
 
-    def update_bom_id(self):
-        """Update bom"""
-        for line in self:
-            if line.product_id.bom_id:
-                line.bom_id = line.product_id.bom_id
-            elif line.product_template_id.bom_id:
-                line.product_id.create_bom()
-                line.bom_id = line.product_id.bom_id
-            else:
-                line.bom_id = False
 
-            if line.product_custom_attribute_value_ids and line.bom_id:
-                line.bom_id.sale_line_id = line
-                line.bom_id.compute_line()
+
+
 
     @api.model
     def create(self, values):

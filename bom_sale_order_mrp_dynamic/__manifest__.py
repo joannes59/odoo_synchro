@@ -16,7 +16,7 @@
     'license': 'AGPL-3',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'sale_management', 'mrp'],
+    'depends': ['base', 'sale', 'sale_stock', 'sale_mrp', 'sale_management', 'mrp'],
 
     # always loaded
     'data': [
@@ -27,6 +27,7 @@
         'views/mrp_routing_workcenter_view.xml',
         'views/mrp_routing_workcenter_group_view.xml',
         'views/product_attribute_view.xml',
+        'views/assets.xml',
     ],
     # only loaded in demonstration mode
 }

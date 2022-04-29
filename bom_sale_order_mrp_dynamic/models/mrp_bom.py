@@ -3,35 +3,14 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 import unicodedata
+import json
 
 import logging
 _logger = logging.getLogger(__name__)
 
 
-def remove_accents(input_str):
-    only_ascii = unicodedata.normalize('NFD', input_str).encode('ascii', 'ignore')
-    if type(only_ascii) == bytes:
-        return only_ascii.decode()
-    else:
-        return only_ascii
-
-
-def txt_cleanup(text):
-    """Return a compatible text with python variable notation"""
-    if text:
-        text = remove_accents(text)
-        text = text.strip()
-        for char in '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n':
-            text = text.replace(char, ' ')
-        for char in [('    ', ' '), ('   ', ' '), ('  ', ' '), (' ', '_')]:
-            text = text.replace(char[0], char[1])
-        return text
-    else:
-        return ''
-
-
 def convert_to_float(text):
-    "convert to float"
+    "convert dirty text to float or 0.0"
     out_str = ""
     if text:
         for char in text:
@@ -48,28 +27,20 @@ def convert_to_float(text):
     return res
 
 
-class MrpBomParameter(models.Model):
-    _name = "mrp.bom.parameter"
-    _description = "Parameter value for computing and search"
-
-    bom_id = fields.Many2one('mrp.bom', 'Bill of materials')
-    attribute_id = fields.Many2one('product.attribute', 'Attribute')
-    name = fields.Char('name', related='attribute_id.code', store=True)
-    value = fields.Char('Value')
-
-    @api.onchange('value')
-    def onchange_value(self):
-        """on change convert to float if needed"""
-        if self.attribute_id.convert_type == 'float':
-            self.value = convert_to_float(self.value)
-
-
 class MrpBom(models.Model):
     _inherit = 'mrp.bom'
 
-    parameter_ids = fields.One2many('mrp.bom.parameter', 'bom_id', string='Parameters')
     sale_line_id = fields.Many2one('sale.order.line', "Sale line")
     sale_id = fields.Many2one('sale.order', 'Sale order', related='sale_line_id.order_id')
+    default_code = fields.Char("Code", related='product_id.default_code', store=True)
+    product_template_attribute_value_ids = fields.Many2many('product.template.attribute.value',
+                                                            related='product_id.product_template_attribute_value_ids',
+                                                            string="Attribute Values")
+
+    combination_indices = fields.Char('Combination value',
+                                      related='product_id.combination_indices', store=True, index=True)
+    json_attribute = fields.Text("Attribute value")
+    json_custom_attribute = fields.Text("Custom Attribute value")
 
     def compute_line(self, data={}):
         """Compute the line"""
@@ -82,34 +53,36 @@ class MrpBom(models.Model):
     def get_attribute_value(self):
         """Get attribute value with conversion to float or text"""
         self.ensure_one()
-        res = {}
-        for line in self.parameter_ids:
-            if line.attribute_id and line.attribute_id.convert_type == 'float':
-                value = convert_to_float(line.value)
-            else:
-                value = line.value
-            res.update({line.name: value})
+        res = json.loads(self.json_attribute or "{}")
+        res.update(json.loads(self.json_custom_attribute or "{}"))
         return res
 
     def delete_attribute(self):
         """delete previous attribute parameters"""
         for bom in self:
-            for line in bom.parameter_ids:
-                if line.attribute_id:
-                    line.unlink()
+            bom.json_attribute = ""
+            bom.json_custom_attribute = ""
 
-    def update_custom_value(self):
-        """ Get custom value"""
+    def update_custom_value(self, product_custom_attribute_value_ids):
+        """ Get custom value by
+        product_custom_attribute_value_ids is set of product.attribute.custom.value"""
         self.ensure_one()
+        res = self.dic_custom_value(product_custom_attribute_value_ids)
+        self.json_custom_attribute = json.dumps(res)
+        return res
+
+    @api.model
+    def dic_custom_value(self, product_custom_attribute_value_ids):
+        """ Get custom value by
+        product_custom_attribute_value_ids is set of product.attribute.custom.value"""
         res = {}
-        for custom in self.sale_line_id.product_custom_attribute_value_ids:
+        for custom in product_custom_attribute_value_ids:
             custom_attribute = custom.custom_product_template_attribute_value_id.attribute_id
             custom_value = custom.custom_value
-            res.update({str(custom_attribute.id): custom_value})
-        for line in self.parameter_ids:
-            if str(line.attribute_id.id) in list(res.keys()):
-                line.value = res[str(line.attribute_id.id)]
-                line.onchange_value()
+            if custom_attribute.code:
+                res[custom_attribute.code] = '%s' % (custom_value)
+                if custom_attribute.convert_type == 'float':
+                    res[custom_attribute.code] = convert_to_float(res[custom_attribute.code])
         return res
 
     def create_attribute_value(self):
@@ -117,33 +90,24 @@ class MrpBom(models.Model):
         for bom in self:
             if bom.product_id:
                 attribute_value_ids = bom.product_id.product_template_attribute_value_ids
-            elif bom.product_tmpl_id:
-                attribute_value_ids = bom.product_tmpl_id.attribute_line_ids
             else:
-                bom.delete_attribute()
+                attribute_value_ids = bom.product_tmpl_id.attribute_line_ids
 
+            json_value = {}
             for line in attribute_value_ids:
-                attribute_id = line.attribute_id.id
-                condition = [('bom_id', '=', bom.id), ('attribute_id', '=', attribute_id)]
-                parameter_ids = self.env['mrp.bom.parameter'].search(condition)
+                if line.attribute_id.code:
+                    if hasattr(line, 'product_attribute_value_id'):
+                        json_value[line.attribute_id.code] = line.product_attribute_value_id.get_value()
+                    else:
+                        json_value[line.attribute_id.code] = '?'
 
-                if not parameter_ids:
-                    parameters_vals = {
-                        'bom_id': bom.id,
-                        'attribute_id': attribute_id,
-                    }
-                    if bom.product_id:
-                        parameters_vals['value'] = line.name
-                    parameter = self.env['mrp.bom.parameter'].create(parameters_vals)
-                    if not parameter.name:
-                        parameter.name = txt_cleanup(line.attribute_id.name)
-                else:
-                    parameter = parameter_ids[0]
-                    if bom.product_id:
-                        parameter.value = line.name
-                parameter.onchange_value()
+            if bom.sale_line_id:
+                bom.update_custom_value(bom.sale_line_id.product_custom_attribute_value_ids)
 
-            bom.update_custom_value()
+            if bom.json_custom_attribute:
+                json_value.update(json.loads(bom.json_custom_attribute) or {})
+                
+            bom.json_attribute = json.dumps(json_value)
 
 
 class MrpBomLine(models.Model):
