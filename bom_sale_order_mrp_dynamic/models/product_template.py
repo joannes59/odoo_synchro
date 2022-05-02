@@ -22,8 +22,6 @@ class ProductTemplate(models.Model):
                                       "Return value by create variable:\n"
                                       "product_list_price = float\n"
                                       "product_lst_price = float\n"
-                                      "product_price = float\n"
-                                      "product_price_extra = float\n"
                                       "product_standard_price = float\n"
                                       "product_code = float\n"
                                        )
@@ -59,8 +57,8 @@ class ProductTemplate(models.Model):
         return res
 
     def put_attribute_value(self, values):
-        """ Check if this product has this attribute values
-        values = product.attribute.value
+        """ Check if this product has this attribute values, if not create
+        values set of: product.attribute.value
         """
         for product_tmpl in self:
             for value in values:
@@ -120,12 +118,65 @@ class ProductTemplate(models.Model):
 
         return res
 
-    def create_product_variant(self, product_template_attribute_value_ids, custom_product_template_attribute_value=[]):
-        """ Create product by request, check if there is bom to create, used by product configurator"""
-        # [42,63,23,60,59] [{"custom_product_template_attribute_value_id":59,"attribute_value_name":"xx","custom_value":"2325"}]
+    def get_attribute_code(self):
+        """ Return the list of attribute needed to create or find a variant for this product_template,
+        The format is a list of product.attribute.code and product.attribute
+        """
+        self.ensure_one()
+        res = {}
+        for line in self.attribute_line_ids:
+            clean_code = line.attribute_id.get_code()
+            res.update({clean_code: line.attribute_id})
+        return res
+
+    def create_product_variant_by_dic(self, product_template_attribute_value):
+        """ Create variant by use a dic of attribute value, return product_variant id,
+        The attribute must be created before, the value is created if option auto_create is True
+        The input product_template_attribute_value is: {'code_of_attribute1': 'code_of_value1', 'code...}
+        The format is product.attribute.code : product.attribute.value.code
+        """
+        self.ensure_one()
+        template_attribute_list = self.get_attribute_code()
+
+        # Check if all attribute is defined
+        if not list(product_template_attribute_value.keys()).sort() == list(template_attribute_list.keys()).sort():
+            raise ValidationError(_("The list of attribute is incomplete to create a new product:%s\n %s" %
+                                    (self.name, template_attribute_list.keys())))
+
+        # Check if all attribute values are defined, else create the missing values
+        template_attribute_value_ids = self.env['product.template.attribute.value']
+        for line in self.attribute_line_ids:
+            value = line.attribute_id.get_code_value(product_template_attribute_value.get(line.attribute_id.code))
+            self.put_attribute_value(value)
+
+            ptav_ids = self.env['product.template.attribute.value'].search([
+                ('attribute_line_id', '=', line.id),
+                ('product_attribute_value_id', '=', value.id)
+            ])
+            if ptav_ids:
+                template_attribute_value_ids |= ptav_ids
+            else:
+                ptav_vals = {
+                    'attribute_line_id': line.id,
+                    'product_attribute_value_id': value.id,
+                }
+                template_attribute_value_ids |= ptav_ids.create(ptav_vals)
+
+        res = self.create_product_variant(json.dumps(template_attribute_value_ids.ids))
+        return res
+
+    def create_product_variant(self, product_template_attribute_value_ids,
+                               custom_product_template_attribute_value="[]"):
+        """ Create product by request, check if there is bom to create, used by product configurator: variant_mixin.js
+        product_template_attribute_value_ids: [42,63,23,60,59]
+        custom_product_template_attribute_value: [{"custom_product_template_attribute_value_id":59,
+                                                    "attribute_value_name":"xx","custom_value":"2325"}]
+        """
         custom_product_template_attribute_value = json.loads(custom_product_template_attribute_value)
         product_template_attribute_value_ids = json.loads(product_template_attribute_value_ids)
 
+        # Check if there is custom attribute value,
+        # create new attribute value if the configuration of the attribute is auto_create
         for attribute_value_data in custom_product_template_attribute_value:
             if not attribute_value_data:
                 continue
@@ -141,15 +192,15 @@ class ProductTemplate(models.Model):
             if not custom_value:
                 raise ValidationError(_("The custom value can't be null, create null value manually"))
 
+            new_value = self.env['product.attribute.value']
             for line_value in attribute_value.attribute_id.value_ids:
-                new_value = self.env['product.attribute.value']
                 if line_value.get_value() == custom_value and not line_value.is_custom:
                     new_value = line_value
                     break
 
             if not new_value:
                 new_value = attribute.value_ids[0].copy({'name': attribute_value_data['custom_value'],
-                                                         'code': '', 'numeric': 0.0})
+                                                         'code': '', 'numeric': 0.0, 'is_custom': False})
                 new_value.update_value()
                 attribute_value.product_tmpl_id.put_attribute_value(new_value)
 
@@ -161,12 +212,14 @@ class ProductTemplate(models.Model):
             product_template_attribute_value_ids.remove(attribute_value.id)
             product_template_attribute_value_ids.append(new_attribute_value.id)
 
+        # return super() with new attribute value
         product_template_attribute_value_ids = json.dumps(product_template_attribute_value_ids)
         product_id = super().create_product_variant(product_template_attribute_value_ids)
         if product_id:
-            new_product = self.env['product.product'].browse(product_id)
-            new_product.create_bom()
-            new_product.button_bom_cost()
+            product = self.env['product.product'].browse(product_id)
+            product.create_bom()
+            if not product.standard_price:
+                product.button_bom_cost()
         return product_id
 
     def button_create_variant(self):

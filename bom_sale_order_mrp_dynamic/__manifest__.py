@@ -10,7 +10,7 @@
         Add BOM to Sale order line with dynamic attributes. Also you can view the Sale order in your Manufacture order
     """,
 
-    'author': "Abdelghani khalidi",
+    'author': "joannes.landy@gmail.com",
     'category': 'Sales',
     'version': '14.0.1',
     'license': 'AGPL-3',

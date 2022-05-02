@@ -2,7 +2,8 @@
 
 from odoo import _, api, fields, models
 from odoo.tools.float_utils import float_split_str
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
+
 import unicodedata
 import logging
 _logger = logging.getLogger(__name__)
@@ -71,8 +72,15 @@ class ProductAttribute(models.Model):
         Note: the variants creation mode cannot be changed once the attribute is used on at least one product.""",
         required=True)
 
+    @api.depends('code')
+    def _check_unicity(self):
+        for raw in self:
+            if raw.code:
+                if len(self.search([('code', '=', raw.code)])) > 1:
+                    raise ValidationError(_('This code is already used: %s' % raw.code))
+
     def get_code_value(self, code=''):
-        """ return the value, if not exist create one"""
+        """ return the value with this code, if not exist create one: product.attribute.value"""
         self.ensure_one()
         res = self.env['product.attribute.value']
         if not code:
@@ -88,6 +96,7 @@ class ProductAttribute(models.Model):
             else:
                 value_vals = {'code': code, 'attribute_id': self.id, 'name': code}
                 res = self.env['product.attribute.value'].create(value_vals)
+                res.update_value()
                 _logger.info("Create new attribute value: %s %s " % (self.name, code))
         else:
             res = value_ids[0]
@@ -99,23 +108,30 @@ class ProductAttribute(models.Model):
             for line in attribute.value_ids:
                 line.get_value()
 
-    def get_value(self, value):
-        """ return converted value"""
-        if self.convert_type == 'float':
-            numeric = convert_to_float(value)
-            return numeric
-        if self.convert_type == 'text':
-            text = txt_cleanup(value)
-            return text
-        else:
-            return False
+    def get_code(self):
+        """ return the attribute code, update if not exist"""
+        self.ensure_one()
+        if not self.code:
+            self.code = txt_cleanup(self.name)
+        return self.code or ''
 
+    @api.model
+    def code_cleanup(self, code):
+        """ Format the code """
+        return txt_cleanup(code)
 
 class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
 
     code = fields.Char('code', help="Code of this attribute value")
     numeric = fields.Float('Numeric value')
+
+    @api.depends('code')
+    def _check_unicity(self):
+        for raw in self:
+            if raw.code:
+                if len(self.search([('code', '=', raw.code)])) > 1:
+                    raise ValidationError(_('This code is already used: %s' % raw.code))
 
     def update_value(self):
         """ Update the value by use code or name"""
@@ -134,6 +150,7 @@ class ProductAttributeValue(models.Model):
                 self.numeric = convert_to_float(self.name)
                 # TODO: add decimal precision to code
                 self.code = str(int(self.numeric))
+                self.sequence = self.code
 
             return self.numeric or 0.0
 
