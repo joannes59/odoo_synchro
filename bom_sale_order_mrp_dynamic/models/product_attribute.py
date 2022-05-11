@@ -38,6 +38,9 @@ def convert_to_float(text):
         for char in text:
             if char.isnumeric() or char in [',', '.', '-']:
                 out_str += char
+            elif out_str:
+                # if some digit is already loaded escape
+                break
         # TODO: Use Country decimal notation function
         out_str = out_str.replace(',', '.')
         try:
@@ -102,11 +105,21 @@ class ProductAttribute(models.Model):
             res = value_ids[0]
         return res
 
+    def get_value(self, text_value):
+        """ return value"""
+        self.ensure_one()
+        if self.convert_type == 'float':
+            return convert_to_float(text_value)
+        elif self.convert_type == 'text':
+            return txt_cleanup(text_value)
+        else:
+            return False
+
     def update_value(self):
         """ Update the value by use code or name"""
         for attribute in self:
             for line in attribute.value_ids:
-                line.get_value()
+                line.update_value()
 
     def get_code(self):
         """ return the attribute code, update if not exist"""
@@ -119,6 +132,7 @@ class ProductAttribute(models.Model):
     def code_cleanup(self, code):
         """ Format the code """
         return txt_cleanup(code)
+
 
 class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
@@ -137,6 +151,13 @@ class ProductAttributeValue(models.Model):
         """ Update the value by use code or name"""
         for attribute_value in self:
             attribute_value.get_value()
+            attribute_value.sequence_update()
+
+    def sequence_update(self):
+        """ Check sequence numerotation"""
+        for attribute_value in self:
+            if self.attribute_id.convert_type == 'float':
+                self.sequence = str(int(self.numeric * 100.0))
 
     def get_value(self):
         """ return value"""
@@ -145,12 +166,11 @@ class ProductAttributeValue(models.Model):
             if self.numeric:
                 pass
             elif self.code:
-                self.numeric = convert_to_float(self.code)
+                self.numeric = self.attribute_id.get_value(self.code)
             else:
-                self.numeric = convert_to_float(self.name)
-                # TODO: add decimal precision to code
+                self.numeric = self.attribute_id.get_value(self.name)
                 self.code = str(int(self.numeric))
-                self.sequence = self.code
+                self.sequence_update()
 
             return self.numeric or 0.0
 
@@ -158,9 +178,8 @@ class ProductAttributeValue(models.Model):
             if self.code:
                 pass
             else:
-                self.code = txt_cleanup(self.name)
-            return self.code or '?'
-
+                self.code = self.attribute_id.get_value(self.name) or '?'
+            return self.code
         else:
             return False
 
@@ -168,7 +187,7 @@ class ProductAttributeValue(models.Model):
         """ Return the code with the name"""
         res = []
         for value in self:
-            if value.code and value.code != value.name:
+            if value.code and value.code != txt_cleanup(value.name):
                 name = '(' + value.code + ') ' + value.name
             else:
                 name = value.name

@@ -7,6 +7,9 @@ from odoo.addons.sale.controllers.variant import VariantController
 
 class BOMVariantController(VariantController):
    
-    @http.route(['/sale/create_product_variant'], type='json', auth="user", methods=['POST'])
-    def create_product_variant(self, product_template_id, product_template_attribute_value_ids, custom_product_template_attribute_value=[], **kwargs):
+    # Change the authentification to use in web shop
+    #    auth="user", @http.route(auth="public")
+
+    @http.route(['/sale/create_product_variant'], type='json', auth="public", methods=['POST'])
+    def create_product_variant(self, product_template_id, product_template_attribute_value_ids, custom_product_template_attribute_value="[]", **kwargs):
         return request.env['product.template'].browse(int(product_template_id)).create_product_variant(product_template_attribute_value_ids, custom_product_template_attribute_value)        

@@ -15,6 +15,7 @@ class ProductTemplate(models.Model):
     bom_id = fields.Many2one('mrp.bom', 'Template Bill of material', compute='get_tmpl_bom_id', store=True)
     bom_line_ids = fields.One2many('mrp.bom.line', related='bom_id.bom_line_ids', string="BOM line")
     template_code = fields.Char('Template code')
+    json_product_tmpl_value = fields.Text("Product template value")
     default_jit_production = fields.Boolean('JIT production', default=True)
     python_compute = fields.Text(string='Python Code', default="",
                                  help="Compute variant value.\n\n"
@@ -173,6 +174,7 @@ class ProductTemplate(models.Model):
                                                     "attribute_value_name":"xx","custom_value":"2325"}]
         """
         custom_product_template_attribute_value = json.loads(custom_product_template_attribute_value)
+        init_product_template_attribute_value_ids = product_template_attribute_value_ids
         product_template_attribute_value_ids = json.loads(product_template_attribute_value_ids)
 
         # Check if there is custom attribute value,
@@ -190,7 +192,7 @@ class ProductTemplate(models.Model):
                 continue
             custom_value = attribute.get_value(attribute_value_data['custom_value'])
             if not custom_value:
-                raise ValidationError(_("The custom value can't be null, create null value manually"))
+                raise ValidationError(_("The custom value: %s can't be null" % attribute.name))
 
             new_value = self.env['product.attribute.value']
             for line_value in attribute_value.attribute_id.value_ids:
@@ -213,11 +215,15 @@ class ProductTemplate(models.Model):
             product_template_attribute_value_ids.append(new_attribute_value.id)
 
         # return super() with new attribute value
-        product_template_attribute_value_ids = json.dumps(product_template_attribute_value_ids)
-        product_id = super().create_product_variant(product_template_attribute_value_ids)
+        new_product_template_attribute_value_ids = json.dumps(product_template_attribute_value_ids)
+        product_id = super().create_product_variant(new_product_template_attribute_value_ids)
         if product_id:
             product = self.env['product.product'].browse(product_id)
+            product.init_product_template_attribute_value_ids = init_product_template_attribute_value_ids
             product.create_bom()
+            if custom_product_template_attribute_value:
+                product.custom_product_template_attribute_value = json.dumps(custom_product_template_attribute_value)
+
             if not product.standard_price:
                 product.button_bom_cost()
         return product_id

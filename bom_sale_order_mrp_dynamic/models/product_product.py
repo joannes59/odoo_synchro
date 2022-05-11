@@ -3,6 +3,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
+import json
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -13,6 +14,11 @@ class ProductProduct(models.Model):
     jit_production = fields.Boolean('JIT production', default=True)
     bom_id = fields.Many2one('mrp.bom', 'BOM', compute='get_bom_id', store=True)
     bom_line_ids = fields.One2many('mrp.bom.line', related='bom_id.bom_line_ids', string="BOM line")
+    json_product_value = fields.Text("Product value")
+    custom_product_template_attribute_value = fields.Text("custom value")
+    init_product_template_attribute_value_ids = fields.Text("technical",
+                                                        help="copy of product_template_attribute_value_ids"
+                                                            "The attribute value initially returned by product configurator")
 
     def compute_python_code(self, data={}):
         """ Compute the python code on template to complete the product value"""
@@ -93,7 +99,14 @@ class ProductProduct(models.Model):
                     else:
                         constraint_attribute[attribute_value.attribute_id.id] |= attribute_value
                 # Check the attribute needed
-                for attribute_value in product.product_template_attribute_value_ids:
+                if product.init_product_template_attribute_value_ids:
+                    product_template_attribute_value_ids = json.loads(product.init_product_template_attribute_value_ids)
+                else:
+                    product_template_attribute_value_ids = product.product_template_attribute_value_ids.ids
+                list_attribute_value = self.env['product.template.attribute.value'].browse(
+                    product_template_attribute_value_ids)
+
+                for attribute_value in list_attribute_value:
                     if attribute_value.attribute_id.id in list(constraint_attribute.keys()):
                         if attribute_value not in constraint_attribute[attribute_value.attribute_id.id]:
                             unlink_line |= line

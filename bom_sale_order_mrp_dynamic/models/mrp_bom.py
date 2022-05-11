@@ -41,6 +41,8 @@ class MrpBom(models.Model):
                                       related='product_id.combination_indices', store=True, index=True)
     json_attribute = fields.Text("Attribute value")
     json_custom_attribute = fields.Text("Custom Attribute value")
+    json_product_value = fields.Text("Product value", related='product_id.json_product_value')
+    json_product_tmpl_value = fields.Text("Product template value", related='product_tmpl_id.json_product_tmpl_value')
 
     def compute_line(self, data={}):
         """Compute the line"""
@@ -60,8 +62,8 @@ class MrpBom(models.Model):
     def delete_attribute(self):
         """delete previous attribute parameters"""
         for bom in self:
-            bom.json_attribute = ""
-            bom.json_custom_attribute = ""
+            bom.json_attribute = "{}"
+            bom.json_custom_attribute = "{}"
 
     def update_custom_value(self, product_custom_attribute_value_ids):
         """ Get custom value by
@@ -103,9 +105,6 @@ class MrpBom(models.Model):
 
             if bom.sale_line_id:
                 bom.update_custom_value(bom.sale_line_id.product_custom_attribute_value_ids)
-
-            if bom.json_custom_attribute:
-                json_value.update(json.loads(bom.json_custom_attribute) or {})
                 
             bom.json_attribute = json.dumps(json_value)
 

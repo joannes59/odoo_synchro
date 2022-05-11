@@ -8,9 +8,12 @@
 
     'description': """
         Add BOM to Sale order line with dynamic attributes. Also you can view the Sale order in your Manufacture order
+        You have to create BOM template with possibility to compute the line or the quantity by filtered attribute
+        The BOM can be configurated with formula like: product_qty = hight * value....
+        
     """,
 
-    'author': "joannes.landy@gmail.com",
+    'author': "joannes landy",
     'category': 'Sales',
     'version': '14.0.1',
     'license': 'AGPL-3',
