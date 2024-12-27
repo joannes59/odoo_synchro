@@ -1,3 +1,0 @@
-id,name,model_id/id,group_id/id,perm_read,perm_write,perm_unlink,perm_create
-access_market_instrument,access_market_instrument,model_market_instrument,,1,1,1,1
-access_market_exchange,access_market_exchange,model_market_exchange,,1,1,1,1
