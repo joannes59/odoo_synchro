@@ -1,0 +1,7 @@
+**/__pycache__
+**/*.pyc
+.idea
+.idea/*
+.~lock.*
+base_module_record
+venv
