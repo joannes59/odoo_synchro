@@ -1,0 +1,82 @@
+<odoo>
+    <record id="view_cartoon_camera_tree" model="ir.ui.view">
+        <field name="name">cartoon.camera.tree</field>
+        <field name="model">cartoon.camera</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="ip"/>
+                <field name="port"/>
+                <field name="fps"/>
+                <field name="flip"/>
+                <button name="get_camera_info" string="Get info" type="object"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cartoon_camera_form" model="ir.ui.view">
+        <field name="name">cartoon.camera.form</field>
+        <field name="model">cartoon.camera</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="ip"/>
+                        <field name="port"/>
+                        <field name="http"/>
+                        <field name="user"/>
+                        <field name="password"/>
+                        <field name="snap_path"/>
+                        <field name="time_start"/>
+                        <field name="time_end"/>
+                        <field name="fps"/>
+                        <field name="flip"/>
+                        <field name="token"/>
+                        <field name="velocity_h"/>
+                        <field name="velocity_v"/>
+                        <field name="height"/>
+                        <field name="width"/>
+                        <field name="nb_height"/>
+                        <field name="nb_width"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action serveur pour discovery -->
+    <record id="action_discover_cameras" model="ir.actions.server">
+        <field name="name">Discover Cameras</field>
+        <field name="model_id" ref="model_cartoon_camera"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = env['cartoon.camera'].discovery()
+        </field>
+    </record>
+
+    <record id="action_cartoon_camera" model="ir.actions.act_window">
+        <field name="name">Cartoon Cameras</field>
+        <field name="res_model">cartoon.camera</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_cartoon_root" name="Cartoon" sequence="10"/>
+    <menuitem id="menu_cartoon_camera" name="Manage Cameras"
+              parent="menu_cartoon_root"
+              action="action_cartoon_camera" sequence="20"/>
+
+    <menuitem id="menu_cartoon_camera_configuration"
+              name="Configuration"
+              sequence="100"
+              parent="menu_cartoon_root"
+              groups="base.group_user"/>
+
+    <menuitem id="menu_cartoon_camera_discovery"
+              name="Discovery"
+              parent="menu_cartoon_camera_configuration"
+              action="action_discover_cameras"
+              groups="base.group_user"/>
+
+
+</odoo>
