@@ -7,7 +7,7 @@
     'summary': 'Management of IP cameras',
     'description': 'Management of IP cameras.',
     'depends': ['base'],
-    'python': ['onvif-zeep', 'wsdiscovery'],
+    'python': ['onvif-zeep', 'wsdiscovery', 'opencv-python'],
     'data': [
         'security/ir.model.access.csv',
         'views/cartoon_camera_views.xml',

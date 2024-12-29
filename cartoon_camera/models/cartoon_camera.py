@@ -2,6 +2,11 @@
 #pip install onvif-zeep wsdiscovery
 from odoo import models, fields, api
 import os
+import numpy as np
+import base64
+import cv2
+import time
+import urllib.request
 from wsdiscovery.discovery import ThreadedWSDiscovery
 from onvif import ONVIFCamera
 
@@ -17,8 +22,7 @@ class CartoonCamera(models.Model):
     user = fields.Char(string='User', default='admin')
     password = fields.Char(string='Password', default='1234567890')
     snap_path = fields.Char(string='Snapshot Path', default="/webcapture.jpg?command=snap")
-    time_start = fields.Float(string='Start Time', default=0.0)
-    time_end = fields.Float(string='End Time', default=0.0)
+    ping = fields.Integer(string='Ping (ms)', default=0.0)
     fps = fields.Float(string='FPS', default=0.0)
     flip = fields.Boolean(string='Flip Image', default=False)
     token = fields.Char(string='Token', default="000")
@@ -28,6 +32,10 @@ class CartoonCamera(models.Model):
     width = fields.Integer(string='Width', default=640)
     nb_height = fields.Integer(string='Grid Rows', default=2)
     nb_width = fields.Integer(string='Grid Columns', default=1)
+
+    profile = fields.Text('Profile')
+
+    frame = fields.Binary(string="Image Frame", attachment=True)
 
 
     def discovery(self):
@@ -39,7 +47,6 @@ class CartoonCamera(models.Model):
         services = ws_discovery.searchServices()
         ws_discovery.stop()
 
-        cameras = []
         for service in services:
             try:
                 xaddr = service.getXAddrs()[0]
@@ -62,13 +69,19 @@ class CartoonCamera(models.Model):
             except Exception as e:
                 continue
 
-    def get_camera_info(self):
-        """ Get information on camera """
+    def get_wsdl_path(self):
+        """ return local wsdl path """
         module_path = os.path.dirname(os.path.abspath(__file__))
         wsdl_path = module_path.replace('cartoon_camera/models', 'cartoon_camera/wsdl')
+        return wsdl_path
+
+
+    def get_camera_info(self):
+        """ Get information on camera """
+        wsdl_path = self.get_wsdl_path()
 
         for camera in self:
-
+            text_profile = ''
             # Connexion à la caméra ONVIF
             onvif_camera = ONVIFCamera(camera.ip, camera.port, camera.user, camera.password,
                                        wsdl_dir=wsdl_path)
@@ -77,18 +90,65 @@ class CartoonCamera(models.Model):
 
             # Récupérer les profils disponibles
             profiles = media_service.GetProfiles()
+            if len(profiles) >= 1:
+                camera.token = profiles[0].token
 
             for profile in profiles:
-                print(f"Profile: {profile.Name}")
-                print(dir(profile))
-
-                # Résolution vidéo
-                video_config = profile.VideoEncoderConfiguration
-                if video_config:
-                    print(f"Resolution: {video_config.Resolution.Width}x{video_config.Resolution.Height}")
-
                 # URI pour les captures d'images (Snapshot URI)
                 snapshot_uri = media_service.GetSnapshotUri({'ProfileToken': profile.token})
-                print(f"Snapshot URI: {snapshot_uri.Uri}")
+                text_profile += f"{profile.token};{profile.Name};{snapshot_uri.Uri}\n"
+            camera.profile = text_profile
 
+    def get_snapshot(self):
+        """ Get image snapshot """
+        for camera in self:
+            time_start = time.time()
+            try:
+                snapshot_url = f"{camera.http}{camera.ip}{camera.snap_path}"
+                img = urllib.request.urlopen(snapshot_url, timeout=2)
+                img_array = np.array(bytearray(img.read()), dtype=np.uint8)
+                frame = cv2.imdecode(img_array, -1)
+            except:
+                frame = np.zeros((camera.height, camera.width, 3), dtype=np.uint8)
 
+            if camera.flip:
+                frame = cv2.flip(frame, 0)
+
+            # Encoder l'image en Base64
+            _, buffer = cv2.imencode('.jpg', frame)
+            encoded_image = base64.b64encode(buffer).decode('utf-8')
+
+            # Mettre à jour les champs
+            height, width, _ = frame.shape
+            camera.height = height
+            camera.width = width
+            camera.frame = encoded_image
+            camera.ping = int((time.time() - time_start) * 100.0)
+
+    def pantilt(self):
+        """ move the camera """
+        wsdl_path = self.get_wsdl_path()
+        pan_x = self.env.context.get('pan_x', 0.0)
+        pan_y = self.env.context.get('pan_y', 0.0)
+        #pan_z = self.env.context.get('pan_z', 0.0)
+
+        for camera in self:
+            onvif_camera = ONVIFCamera(camera.ip, camera.port, camera.user, camera.password,
+                                       wsdl_dir=wsdl_path)
+
+            ptz_service = onvif_camera.create_ptz_service()
+            request = ptz_service.create_type('ContinuousMove')
+            request.ProfileToken = camera.token
+
+            # Déplacement relatif Pan-Tilt-Zoom
+            if camera.flip:
+                pan_y = - pan_y
+
+            request.Velocity = {'PanTilt': {'x': pan_x, 'y': pan_y}}
+            #                                'Zoom': {'x': pan_z}}
+
+            # Exécution de la commande
+            ptz_service.ContinuousMove(request)
+            time.sleep(0.5)
+            ptz_service.Stop({'ProfileToken': camera.token})
+            camera.get_snapshot()

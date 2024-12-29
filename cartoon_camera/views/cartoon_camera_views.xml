@@ -7,9 +7,6 @@
                 <field name="name"/>
                 <field name="ip"/>
                 <field name="port"/>
-                <field name="fps"/>
-                <field name="flip"/>
-                <button name="get_camera_info" string="Get info" type="object"/>
             </list>
         </field>
     </record>
@@ -18,28 +15,88 @@
         <field name="name">cartoon.camera.form</field>
         <field name="model">cartoon.camera</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="Camera">
                 <sheet>
-                    <group>
-                        <field name="name"/>
-                        <field name="ip"/>
-                        <field name="port"/>
-                        <field name="http"/>
-                        <field name="user"/>
-                        <field name="password"/>
-                        <field name="snap_path"/>
-                        <field name="time_start"/>
-                        <field name="time_end"/>
-                        <field name="fps"/>
-                        <field name="flip"/>
-                        <field name="token"/>
-                        <field name="velocity_h"/>
-                        <field name="velocity_v"/>
-                        <field name="height"/>
-                        <field name="width"/>
-                        <field name="nb_height"/>
-                        <field name="nb_width"/>
-                    </group>
+                    <div class="oe_title pe-0">
+                        <h1 class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex w-100">
+                                <field name="name" options="{'line_breaks': False}" widget="text"
+                                       class="text-truncate w-md-75 w-100 pe-2"
+                                       placeholder="Camera name..."/>
+                            </div>
+                        </h1>
+                    </div>
+
+                    <notebook>
+                        <page string="Visual">
+                            <group>
+                                <group>
+                                    <field name="frame" widget="image" nolabel="1"/>
+                                </group>
+                                <group>
+
+                                    <field name="flip" widget="boolean_toggle"/>
+                                    <field name="nb_height" widget="integer"/>
+                                    <field name="nb_width" widget="integer"/>
+                                    <field name="height" readonly="1"/>
+                                    <field name="width" readonly="1"/>
+                                    <field name="ping" readonly="1"/>
+
+                                    <!-- Section pour les boutons directionnels -->
+                                    <div>
+                                        <div style="text-align: center; margin-top: 20px;">
+                                            <!-- Bouton haut -->
+                                            <button name="pantilt" type="object" class="btn btn-secondary"
+                                                    context="{'pan_y': 0.1}">
+                                                <span class="fa fa-arrow-up"/>
+                                            </button>
+                                        </div>
+                                        <div style="display: flex; justify-content: center; margin-top: 10px;">
+                                            <!-- Bouton gauche -->
+                                            <button name="pantilt" type="object" class="btn btn-secondary"
+                                                    style="margin-right: 5px;" context="{'pan_x': 0.1}">
+                                                <span class="fa fa-arrow-left"/>
+                                            </button>
+                                            <span style="margin-left: 25px;margin-right: 25px;"> </span>
+                                            <!-- Bouton droite -->
+                                            <button name="pantilt" type="object" class="btn btn-secondary"
+                                                    style="margin-left: 5px;" context="{'pan_x': -0.1}">
+                                                <span class="fa fa-arrow-right"/>
+                                            </button>
+                                        </div>
+                                        <div style="text-align: center; margin-top: 10px;">
+                                            <!-- Bouton bas -->
+                                            <button name="pantilt" type="object" class="btn btn-secondary"
+                                                    context="{'pan_y': -0.1}">
+                                                <span class="fa fa-arrow-down"/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button name="get_snapshot" string="snapshot" type="object"
+                                            class="btn btn-primary px-1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="connexion">
+                            <group>
+                                <field name="ip"/>
+                                <field name="port"/>
+                                <field name="http"/>
+                                <field name="user"/>
+                                <field name="password"/>
+                            </group>
+                        </page>
+                        <page string="Information">
+                            <group>
+                                <field name="snap_path"/>
+                                <field name="profile"/>
+
+                                <button name="get_camera_info" string="Get info" type="object"
+                                        class="btn btn-primary px-1"/>
+                            </group>
+                        </page>
+
+                    </notebook>
                 </sheet>
             </form>
         </field>

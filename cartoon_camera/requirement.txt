@@ -1,1 +1,3 @@
-WSDiscovery
+onvif-zeep
+wsdiscovery
+opencv-python
