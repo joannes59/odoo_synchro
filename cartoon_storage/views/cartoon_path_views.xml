@@ -1,0 +1,55 @@
+<odoo>
+    <record id="view_cartoon_path_list" model="ir.ui.view">
+        <field name="name">cartoon.path.list</field>
+        <field name="model">cartoon.path</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="path"/>
+                <field name="size"/>
+                <field name="state"/>
+                <button name="update_info" string="update" type="object" class="btn btn-primary"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cartoon_path_form" model="ir.ui.view">
+        <field name="name">cartoon.path.form</field>
+        <field name="model">cartoon.path</field>
+        <field name="arch" type="xml">
+            <form readonly="1">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="path"/>
+                        <field name="size"/>
+                        <field name="state"/>
+                    </group>
+                    <button name="update_info" string="update" type="object" class="btn btn-primary"/>
+                    <button name="update_info" string="update all subfolders" type="object"
+                            context="{'recursive': True}" class="btn btn-primary oe_online"/>
+                    <newline/>
+                    <field name="child_ids" invisible="[('child_ids', '=', False)]"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+        <!-- Sous-menu pour path -->
+    <record id="action_cartoon_path" model="ir.actions.act_window">
+        <field name="name">paths</field>
+        <field name="res_model">cartoon.path</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p>Manage your path here.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_cartoon_path"
+              name="Paths"
+              sequence="40"
+              parent="menu_cartoon_configuration"
+              action="action_cartoon_path"
+              groups="base.group_user"/>
+
+</odoo>

@@ -3,10 +3,15 @@
         <field name="name">cartoon.camera.tree</field>
         <field name="model">cartoon.camera</field>
         <field name="arch" type="xml">
-            <list>
+            <list string="Camera">
                 <field name="name"/>
                 <field name="ip"/>
-                <field name="port"/>
+                <field name="ping"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'enabled'"
+                       decoration-danger="state == 'error'"
+                       decoration-muted="state == 'disabled'"
+                       decoration-success="state == 'online'"/>
             </list>
         </field>
     </record>
@@ -16,6 +21,9 @@
         <field name="model">cartoon.camera</field>
         <field name="arch" type="xml">
             <form string="Camera">
+                <header>
+                    <button name="toggle_state" type="object" class="btn-primary" string="enabled/disabled"/>
+                </header>
                 <sheet>
                     <div class="oe_title pe-0">
                         <h1 class="d-flex justify-content-between align-items-center">
@@ -23,10 +31,14 @@
                                 <field name="name" options="{'line_breaks': False}" widget="text"
                                        class="text-truncate w-md-75 w-100 pe-2"
                                        placeholder="Camera name..."/>
+                                <field name="state" widget="badge"
+                                       decoration-info="state == 'enabled'"
+                                       decoration-danger="state == 'error'"
+                                       decoration-muted="state == 'disabled'"
+                                       decoration-success="state == 'online'"/>
                             </div>
                         </h1>
                     </div>
-
                     <notebook>
                         <page string="Visual">
                             <group>
@@ -34,7 +46,6 @@
                                     <field name="frame" widget="image" nolabel="1"/>
                                 </group>
                                 <group>
-
                                     <field name="flip" widget="boolean_toggle"/>
                                     <field name="nb_height" widget="integer"/>
                                     <field name="nb_width" widget="integer"/>
@@ -47,27 +58,27 @@
                                         <div style="text-align: center; margin-top: 20px;">
                                             <!-- Bouton haut -->
                                             <button name="pantilt" type="object" class="btn btn-secondary"
-                                                    context="{'pan_y': 0.1}">
+                                                    context="{'pan_y': 1.0}">
                                                 <span class="fa fa-arrow-up"/>
                                             </button>
                                         </div>
                                         <div style="display: flex; justify-content: center; margin-top: 10px;">
                                             <!-- Bouton gauche -->
                                             <button name="pantilt" type="object" class="btn btn-secondary"
-                                                    style="margin-right: 5px;" context="{'pan_x': 0.1}">
+                                                    style="margin-right: 5px;" context="{'pan_x': 1.0}">
                                                 <span class="fa fa-arrow-left"/>
                                             </button>
                                             <span style="margin-left: 25px;margin-right: 25px;"> </span>
                                             <!-- Bouton droite -->
                                             <button name="pantilt" type="object" class="btn btn-secondary"
-                                                    style="margin-left: 5px;" context="{'pan_x': -0.1}">
+                                                    style="margin-left: 5px;" context="{'pan_x': -1.0}">
                                                 <span class="fa fa-arrow-right"/>
                                             </button>
                                         </div>
                                         <div style="text-align: center; margin-top: 10px;">
                                             <!-- Bouton bas -->
                                             <button name="pantilt" type="object" class="btn btn-secondary"
-                                                    context="{'pan_y': -0.1}">
+                                                    context="{'pan_y': -1.0}">
                                                 <span class="fa fa-arrow-down"/>
                                             </button>
                                         </div>
@@ -90,12 +101,10 @@
                             <group>
                                 <field name="snap_path"/>
                                 <field name="profile"/>
-
                                 <button name="get_camera_info" string="Get info" type="object"
                                         class="btn btn-primary px-1"/>
                             </group>
                         </page>
-
                     </notebook>
                 </sheet>
             </form>
@@ -118,20 +127,15 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_cartoon_root" name="Cartoon" sequence="10"/>
-    <menuitem id="menu_cartoon_camera" name="Manage Cameras"
-              parent="menu_cartoon_root"
+    <menuitem id="menu_cartoon_camera" name="Cameras"
+              parent="cartoon_storage.menu_cartoon_root"
               action="action_cartoon_camera" sequence="20"/>
 
-    <menuitem id="menu_cartoon_camera_configuration"
-              name="Configuration"
-              sequence="100"
-              parent="menu_cartoon_root"
-              groups="base.group_user"/>
+
 
     <menuitem id="menu_cartoon_camera_discovery"
-              name="Discovery"
-              parent="menu_cartoon_camera_configuration"
+              name="Camera discovery"
+              parent="cartoon_storage.menu_cartoon_configuration"
               action="action_discover_cameras"
               groups="base.group_user"/>
 

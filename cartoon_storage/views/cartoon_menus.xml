@@ -1,0 +1,21 @@
+<odoo>
+    <!-- Menu principal pour Cartoon Storage -->
+    <menuitem id="menu_cartoon_root"
+              name="Cartoon"
+              sequence="10"
+              parent=""
+              action=""
+              groups="base.group_user"/>
+
+        <menuitem id="menu_cartoon_images"
+              name="Images"
+              sequence="10"
+              parent="cartoon_storage.menu_cartoon_root"
+              groups="base.group_user"/>
+
+        <menuitem id="menu_cartoon_configuration"
+              name="Configuration"
+              sequence="100"
+              parent="cartoon_storage.menu_cartoon_root"
+              groups="base.group_user"/>
+</odoo>

@@ -32,11 +32,18 @@ class CartoonCamera(models.Model):
     width = fields.Integer(string='Width', default=640)
     nb_height = fields.Integer(string='Grid Rows', default=2)
     nb_width = fields.Integer(string='Grid Columns', default=1)
-
     profile = fields.Text('Profile')
-
     frame = fields.Binary(string="Image Frame", attachment=True)
+    state = fields.Selection([('draft', 'draft'), ('online', 'online'), ('enabled', 'enabled'),
+                              ('error', 'error'), ('disabled', 'disabled')],
+                             string='State', default='draft')
 
+    def toggle_state(self):
+        for record in self:
+            if record.state not in ['disabled', 'draft']:
+                record.state = 'disabled'
+            elif record.state in ['disabled', 'draft', 'error', 'online']:
+                record.state = 'enabled'
 
     def discovery(self):
         """
@@ -75,7 +82,6 @@ class CartoonCamera(models.Model):
         wsdl_path = module_path.replace('cartoon_camera/models', 'cartoon_camera/wsdl')
         return wsdl_path
 
-
     def get_camera_info(self):
         """ Get information on camera """
         wsdl_path = self.get_wsdl_path()
@@ -108,8 +114,10 @@ class CartoonCamera(models.Model):
                 img = urllib.request.urlopen(snapshot_url, timeout=2)
                 img_array = np.array(bytearray(img.read()), dtype=np.uint8)
                 frame = cv2.imdecode(img_array, -1)
+                camera.state = 'online'
             except:
                 frame = np.zeros((camera.height, camera.width, 3), dtype=np.uint8)
+                camera.state = 'error'
 
             if camera.flip:
                 frame = cv2.flip(frame, 0)
@@ -144,7 +152,7 @@ class CartoonCamera(models.Model):
             if camera.flip:
                 pan_y = - pan_y
 
-            request.Velocity = {'PanTilt': {'x': pan_x, 'y': pan_y}}
+            request.Velocity = {'PanTilt': {'x': pan_x * camera.velocity_v, 'y': pan_y * camera.velocity_h}}
             #                                'Zoom': {'x': pan_z}}
 
             # Exécution de la commande

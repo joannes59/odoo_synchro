@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_storage,access_storage,model_cartoon_storage,base.group_user,1,1,1,1
+access_path,access_path,model_cartoon_path,base.group_user,1,1,1,1
+access_extension,access_path_extension,model_cartoon_path_extension,base.group_user,1,1,1,1
+access_image,access_image,model_cartoon_image,base.group_user,1,1,1,1
+access_tag,access_tag,model_cartoon_image_tag,base.group_user,1,1,1,1
