@@ -118,6 +118,7 @@ class CartoonCamera(models.Model):
             except:
                 frame = np.zeros((camera.height, camera.width, 3), dtype=np.uint8)
                 camera.state = 'error'
+                return False
 
             if camera.flip:
                 frame = cv2.flip(frame, 0)
@@ -132,6 +133,7 @@ class CartoonCamera(models.Model):
             camera.width = width
             camera.frame = encoded_image
             camera.ping = int((time.time() - time_start) * 100.0)
+        return True
 
     def pantilt(self):
         """ move the camera """

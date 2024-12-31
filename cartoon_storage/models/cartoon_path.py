@@ -49,8 +49,10 @@ class CartoonPath(models.Model):
         """ define extension """
         extension_map = {}
         for path in self:
-            if path.isfile:
+            if path.isfile and path.name and '.' in path.name and path.name[0] != '.':
                 extension_name = path.name.split('.')[-1]
+                if extension_name.isnumeric():
+                    continue
                 if extension_name != path.extension_id.name:
                     if extension_name not in list(extension_map.keys()):
                         extension_ids = self.env['cartoon.path.extension'].search([('name', '=', extension_name)], limit=1)

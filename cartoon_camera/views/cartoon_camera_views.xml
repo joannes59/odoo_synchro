@@ -12,6 +12,7 @@
                        decoration-danger="state == 'error'"
                        decoration-muted="state == 'disabled'"
                        decoration-success="state == 'online'"/>
+                <button name="toggle_state" type="object" class="btn-primary" string="enabled/disabled"/>
             </list>
         </field>
     </record>
@@ -122,22 +123,22 @@
     </record>
 
     <record id="action_cartoon_camera" model="ir.actions.act_window">
-        <field name="name">Cartoon Cameras</field>
+        <field name="name">Cameras</field>
         <field name="res_model">cartoon.camera</field>
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_cartoon_camera" name="Cameras"
+    <menuitem id="menu_cartoon_camera_root" name="Cameras"
               parent="cartoon_storage.menu_cartoon_root"
+              sequence="90"/>
+
+    <menuitem id="menu_cartoon_camera" name="Cameras"
+              parent="menu_cartoon_camera_root"
               action="action_cartoon_camera" sequence="20"/>
-
-
 
     <menuitem id="menu_cartoon_camera_discovery"
               name="Camera discovery"
               parent="cartoon_storage.menu_cartoon_configuration"
               action="action_discover_cameras"
               groups="base.group_user"/>
-
-
 </odoo>

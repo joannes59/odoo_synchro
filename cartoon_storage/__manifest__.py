@@ -12,6 +12,7 @@
         "views/cartoon_menus.xml",
         "views/cartoon_storage_views.xml",
         "views/cartoon_path_views.xml",
+        "views/cartoon_path_extension_views.xml",
         "views/cartoon_image_views.xml",
         "views/cartoon_tag_views.xml",
 

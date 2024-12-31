@@ -29,7 +29,7 @@
                     <button name="update_info" string="update all subfolders" type="object"
                             context="{'recursive': True}" class="btn btn-primary oe_online"/>
                     <newline/>
-                    <field name="child_ids" invisible="[('child_ids', '=', False)]"/>
+                    <field name="child_ids"/>
                 </sheet>
             </form>
         </field>
