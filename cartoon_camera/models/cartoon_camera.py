@@ -9,6 +9,7 @@ import time
 import urllib.request
 from wsdiscovery.discovery import ThreadedWSDiscovery
 from onvif import ONVIFCamera
+import threading
 
 class CartoonCamera(models.Model):
     _name = 'cartoon.camera'
@@ -34,6 +35,7 @@ class CartoonCamera(models.Model):
     nb_width = fields.Integer(string='Grid Columns', default=1)
     profile = fields.Text('Profile')
     frame = fields.Binary(string="Image Frame", attachment=True)
+    save_path = fields.Char(string='Save path', default="/dev/shm")
     state = fields.Selection([('draft', 'draft'), ('online', 'online'), ('enabled', 'enabled'),
                               ('error', 'error'), ('disabled', 'disabled')],
                              string='State', default='draft')
@@ -82,6 +84,18 @@ class CartoonCamera(models.Model):
         wsdl_path = module_path.replace('cartoon_camera/models', 'cartoon_camera/wsdl')
         return wsdl_path
 
+    def get_save_path(self, date=None):
+        # Format du nom de répertoire basé sur l'heure et la minute
+        self.ensure_one()
+        date = date or fields.Datetime.now()
+        nom_repertoire = date.strftime("camera%Y%m%d_%H_%M")
+        save_path = os.path.join(self.save_path, nom_repertoire)
+
+        # Créer le répertoire s'il n'existe pas
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        return save_path
+
     def get_camera_info(self):
         """ Get information on camera """
         wsdl_path = self.get_wsdl_path()
@@ -104,6 +118,52 @@ class CartoonCamera(models.Model):
                 snapshot_uri = media_service.GetSnapshotUri({'ProfileToken': profile.token})
                 text_profile += f"{profile.token};{profile.Name};{snapshot_uri.Uri}\n"
             camera.profile = text_profile
+
+
+    def start_worker(self):
+        for camera in self:
+            worker_thread = threading.Thread(target=camera.continue_snapshot, daemon=True)
+            worker_thread.start()
+
+    def continue_snapshot(self):
+        """ continue snapshot """
+        continue_state = True
+        while continue_state:
+            for camera in self:
+                if camera.state in ['disabled']:
+                    continue_state = False
+                camera.save_snapshot()
+
+    def save_snapshot(self):
+        """ get and save snapshot """
+        for camera in self:
+            time_start = time.time()
+            if camera.state in ['disabled', 'draft']:
+                continue
+            try:
+                snapshot_url = f"{camera.http}{camera.ip}{camera.snap_path}"
+                img = urllib.request.urlopen(snapshot_url, timeout=1)
+                img_array = np.array(bytearray(img.read()), dtype=np.uint8)
+                frame = cv2.imdecode(img_array, -1)
+            except:
+                frame = np.zeros((camera.height, camera.width, 3), dtype=np.uint8)
+
+            if camera.flip:
+                frame = cv2.flip(frame, 0)
+
+            file_path = camera.save_image(frame)
+
+            #print('--------ping----------', time.time() - time_start, file_path)
+
+    def save_image(self, frame):
+        """ Save image """
+        self.ensure_one()
+        date = fields.Datetime.now()
+        repertoire = self.get_save_path(date=date)
+        file_name = self.name + date.strftime("_%Y%m%d_%H%M%S_") + str(date.microsecond).zfill(6) + '.png'
+        file_path = os.path.join(repertoire, file_name)
+        cv2.imwrite(file_path, frame)
+        return file_path
 
     def get_snapshot(self):
         """ Get image snapshot """

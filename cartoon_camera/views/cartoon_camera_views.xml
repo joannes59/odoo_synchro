@@ -24,6 +24,7 @@
             <form string="Camera">
                 <header>
                     <button name="toggle_state" type="object" class="btn-primary" string="enabled/disabled"/>
+                    <button name="start_worker" type="object" class="btn-primary" string="snapshot continues"/>
                 </header>
                 <sheet>
                     <div class="oe_title pe-0">
@@ -86,6 +87,11 @@
                                     </div>
                                     <button name="get_snapshot" string="snapshot" type="object"
                                             class="btn btn-primary px-1"/>
+                                    <button name="save_snapshot" string="save" type="object"
+                                            class="btn btn-primary px-1"/>
+                                    <button name="start_worker" string="start_worker" type="object"
+                                            class="btn btn-primary px-1"/>
+
                                 </group>
                             </group>
                         </page>
@@ -101,6 +107,7 @@
                         <page string="Information">
                             <group>
                                 <field name="snap_path"/>
+                                <field name="save_path"/>
                                 <field name="profile"/>
                                 <button name="get_camera_info" string="Get info" type="object"
                                         class="btn btn-primary px-1"/>

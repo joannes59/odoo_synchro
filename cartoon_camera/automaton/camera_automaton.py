@@ -5,6 +5,7 @@ import urllib.request
 import numpy as np
 import threading
 import os
+import json
 
 # pip install odoorpc opencv-python numpy
 
@@ -12,7 +13,7 @@ import os
 class RemoteCamera:
     """ Remote camera """
     def __init__(self, ip):
-        self.snap_path = '?'
+        self.snap_path = '/webcapture.jpg?command=snap'
         self.name = '?'
         self.img = False
         self.id = 0
@@ -37,16 +38,25 @@ class RemoteCamera:
 
 class CameraManager:
     """ manage pool of camera """
-    def __init__(self):
+    def __init__(self, config_path='config.json'):
         self.cameras = []
+        self.config_path = config_path
+        self.odoo = False
 
-    def get_odoo(self):
+    def get_configuration(self):
         """ return odoorpc connection """
-        odoo = odoorpc.ODOO('localhost', port=8069)
-        db_name = 'projet'
-        user = 'camera'
-        passwd = 'camera'
-        odoo.login(db_name, user, passwd)
+        with open(self.config_path, 'r') as f:
+            config = json.load(f)
+
+        host =config['database']['host']
+        port = config['database']['port']
+        db_name = config['database']['db_name']
+        username = config['database']['username']
+        password = config['database']['password']
+
+        odoo = odoorpc.ODOO(host, port)
+        odoo.login(db_name, username, password)
+        self.odoo = odoo
 
     def multi_snapshot(self):
         """ get snapshot off all camera """
@@ -55,21 +65,20 @@ class CameraManager:
 
         # Create thread
         for camera in self.cameras:
+            process[camera.name + '_save'] = threading.Thread(
+                target=camera.save_snapshot,
+                args=(),
+                name=camera.name + '_save')
             process[camera.name] = threading.Thread(
                 target=camera.get_snapshot,
                 args=(),
                 name=camera.name)
 
-            process[camera.name + '_save'] = threading.Thread(
-                target=camera.save_snapshot,
-                args=(),
-                name=camera.name + '_save')
-
         # start process
         for camera in self.cameras:
-            process[camera.name].start()
-        for camera in self.cameras:
             process[camera.name + '_save'].start()
+        for camera in self.cameras:
+            process[camera.name].start()
 
         # wait end of process
         time.sleep(0.01)
@@ -77,29 +86,4 @@ class CameraManager:
             process[camera.name + '_save'].join()
         for camera in self.cameras:
             process[camera.name].join()
-
-
-
-
-
-camera_ids = odoo.env['cartoon.camera'].search([])
-
-cameras = []
-for camera_id in camera_ids:
-    cameras.append(odoo.env['cartoon.camera'].browse(camera_id))
-
-camera_id = camera_ids[0]
-for i in range(10):
-    start = time.time()
-    res = odoo.execute('cartoon.camera', 'get_snapshot', [3])
-    print(time.time() - start)
-
-print('-------------------------')
-for i in range(10):
-    start = time.time()
-    snapshot_url = f"http://192.168.0.200/webcapture.jpg?command=snap"
-    img = urllib.request.urlopen(snapshot_url, timeout=1)
-    print(time.time() - start)
-
-
 

@@ -1,0 +1,50 @@
+<odoo>
+    <!-- Form view for the cartoon.process model -->
+    <record id="view_cartoon_process_form" model="ir.ui.view">
+        <field name="name">cartoon.process.form</field>
+        <field name="model">cartoon.process</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="launch_script" type="object" string="start" class="oe_button"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>  <!-- Script name field -->
+                        <field name="script_path"/>
+                        <field name="arguments"/>
+                        <field name="python_env"/>  <!-- Python environment field -->
+                        <field name="process_id"/>  <!-- Process ID field -->
+                        <field name="status"/>  <!-- Process status field -->
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree view for the cartoon.process model -->
+    <record id="view_cartoon_process_list" model="ir.ui.view">
+        <field name="name">cartoon.process.list</field>
+        <field name="model">cartoon.process</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>  <!-- Script name field -->
+                <field name="process_id"/>  <!-- Process ID field -->
+                <field name="status"/>  <!-- Process status field -->
+                <button name="launch_script" type="object" string="start" class="oe_button"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action to open the cartoon.process model -->
+    <record id="action_cartoon_process" model="ir.actions.act_window">
+        <field name="name">Cartoon Process</field>
+        <field name="res_model">cartoon.process</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu items for the module -->
+    <menuitem id="menu_cartoon_process_main" name="Process" parent="cartoon_storage.menu_cartoon_configuration"/>
+    <menuitem id="menu_cartoon_process_processes" name="Processes" parent="menu_cartoon_process_main" action="action_cartoon_process"/>
+
+</odoo>
